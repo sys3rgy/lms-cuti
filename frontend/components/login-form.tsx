@@ -1,57 +1,66 @@
-import { useState } from "react"
-import Link from "next/link"
+import { useState } from "react";
+import Link from "next/link";
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export function LoginForm() {
   // State management for email, password, and error handling
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault() // Prevent default form submission
-    setLoading(true)
-    setError(null)
+    e.preventDefault(); // Prevent default form submission
+    setLoading(true);
+    setError(null);
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      })
+      // Use the NEXT_PUBLIC_BACKEND_URL environment variable for API calls
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/login`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email, password }),
+        }
+      );
 
-      const data = await response.json()
+      // Check if response is in JSON format
+      const data = await response.json().catch(() => {
+        throw new Error("Unexpected response format");
+      });
 
       if (response.ok) {
         // Store the token in localStorage
-        localStorage.setItem("token", data.token)
+        localStorage.setItem("token", data.token);
 
         // Redirect to dashboard
-        window.location.href = "/dashboard"
+        window.location.href = "/dashboard";
       } else {
         // Handle error messages from the backend
-        setError(data.message || "Login failed")
+        setError(data.message || "Login failed");
       }
-    } catch (err) {
-      console.error("Login error:", err)
-      setError("An unexpected error occurred. Please try again.")
+    } catch (err: any) {
+      console.error("Login error:", err);
+      setError(
+        err.message || "An unexpected error occurred. Please try again."
+      );
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <Card className="mx-auto max-w-sm">
@@ -107,5 +116,5 @@ export function LoginForm() {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
