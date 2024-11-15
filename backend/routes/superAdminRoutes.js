@@ -1,24 +1,14 @@
 // routes/superAdminRoutes.js
+
 const express = require('express');
-const authMiddleware = require('../middlewares/authMiddleware');
 const router = express.Router();
+const authMiddleware = require('../middlewares/authMiddleware'); // Middleware for role checking
+const superAdminController = require('../controllers/superAdminController'); // SuperAdmin-specific functions
 
-// Example of a protected SuperAdmin-only route
-router.get('/manage-users', 
-    authMiddleware.verifyToken, 
-    authMiddleware.checkRole(['SuperAdmin']), 
-    (req, res) => {
-        res.status(200).json({ message: 'SuperAdmin managing users' });
-    }
-);
+// Middleware to verify SuperAdmin access
+router.use(authMiddleware.verifyToken, authMiddleware.checkRole(['SuperAdmin']));
 
-// Another example for managing companies
-router.get('/manage-companies', 
-    authMiddleware.verifyToken, 
-    authMiddleware.checkRole(['SuperAdmin']), 
-    (req, res) => {
-        res.status(200).json({ message: 'SuperAdmin managing companies' });
-    }
-);
+// Example SuperAdmin-only route
+router.get('/admin-data', superAdminController.getAdminData);
 
 module.exports = router;

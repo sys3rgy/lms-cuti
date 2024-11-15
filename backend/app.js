@@ -14,16 +14,20 @@ app.get("/", (req, res) => {
   res.send("Backend is running");
 });
 
-module.exports = app;
+// Import routes
+const authRoutes = require('./routes/authRoutes');           // Authentication routes
+const superAdminRoutes = require('./routes/superAdminRoutes'); // SuperAdmin routes
+const userRoutes = require('./routes/userRoutes');           // User data routes
 
-// Import the authentication routes module
-const authRoutes = require('./routes/authRoutes');
-const superAdminRoutes = require('./routes/superAdminRoutes');
-
-// Mount the authentication routes at the '/api/auth' path
-// This means all routes defined in 'authRoutes' will be prefixed with '/api/auth'
-// For example, '/login' in authRoutes will be accessible as '/api/auth/login'
+// Mount the routes
+// Authentication routes (e.g., /api/auth/login, /api/auth/superadmin/login)
 app.use('/api/auth', authRoutes);
 
-// Register the superAdminRoutes at '/api/superadmin'
+// SuperAdmin-specific routes (e.g., /api/superadmin/admin-data)
 app.use('/api/superadmin', superAdminRoutes);
+
+// User data routes (e.g., /api/users)
+app.use('/api', userRoutes);
+
+// Export app module for server or testing
+module.exports = app;
