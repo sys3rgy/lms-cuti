@@ -1,11 +1,11 @@
-// app.js
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 
+// Initialize app
 const app = express();
 
-// Middleware
+// Global Middleware
 app.use(cors());
 app.use(express.json());
 
@@ -15,23 +15,29 @@ app.get("/", (req, res) => {
 });
 
 // Import routes
-const authRoutes = require('./routes/authRoutes');           // Authentication routes
-const superAdminRoutes = require('./routes/superAdminRoutes'); // SuperAdmin routes
-const userRoutes = require('./routes/userRoutes');           // User data routes
+const authRoutes = require("./routes/authRoutes"); // Authentication routes
+const superAdminRoutes = require("./routes/superAdminRoutes"); // SuperAdmin routes
+const userRoutes = require("./routes/userRoutes"); // User data routes
+const policiesRoutes = require("./routes/policiesRoutes"); // Policies routes
 
-// Mount the routes
-// Authentication routes (e.g., /api/auth/login, /api/auth/superadmin/login)
-app.use('/api/auth', authRoutes);
+// Mount routes under `/api`
+app.use("/api/auth", authRoutes); // Authentication routes
+app.use("/api/superadmin", superAdminRoutes); // SuperAdmin-specific routes
+app.use("/api/users", userRoutes); // User management routes
+app.use("/api/policies", policiesRoutes); // Policies-related routes
 
-// SuperAdmin-specific routes (e.g., /api/superadmin/admin-data)
-app.use('/api/superadmin', superAdminRoutes);
+// Catch-all for unknown routes
+app.use((req, res, next) => {
+  res.status(404).json({ message: "Route not found" });
+});
 
-// User data routes (e.g., /api/users)
-app.use('/api', userRoutes);
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error("Unhandled error:", err.stack || err);
+  res
+    .status(err.status || 500)
+    .json({ message: err.message || "Internal server error" });
+});
 
 // Export app module for server or testing
 module.exports = app;
-
-// Use the policies route
-const policiesRoutes = require("./routes/policiesRoutes");
-app.use("/api/policies", policiesRoutes);

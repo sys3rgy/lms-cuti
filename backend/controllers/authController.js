@@ -1,4 +1,3 @@
-// controllers/authController.js
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const db = require("../config/database");
@@ -13,53 +12,89 @@ authController.generateToken = (user) => {
   });
 };
 
-// Login function for regular users
+// Login function
 authController.login = async (req, res) => {
   const { email, password } = req.body;
+
   try {
-    const user = await db.query("SELECT * FROM users WHERE email = $1", [
+    // Check if user exists
+    const userResult = await db.query("SELECT * FROM users WHERE email = $1", [
       email,
     ]);
-    if (user.rows.length === 0)
+
+    if (userResult.rows.length === 0) {
       return res.status(404).json({ message: "User not found" });
+    }
 
-    const validPassword = await bcrypt.compare(password, user.rows[0].password);
-    if (!validPassword)
+    const user = userResult.rows[0];
+
+    // Validate password
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) {
       return res.status(401).json({ message: "Invalid password" });
+    }
 
-    const token = authController.generateToken(user.rows[0]);
+    // Get user role
+    const roleResult = await db.query(
+      "SELECT r.name AS role FROM roles r INNER JOIN user_roles ur ON r.id = ur.role_id WHERE ur.user_id = $1",
+      [user.id]
+    );
+    const role = roleResult.rows[0]?.role || "Employee"; // Default to "Employee" if no role is found
+
+    // Generate token
+    const token = authController.generateToken({ id: user.id, role });
+
     res.status(200).json({ token });
   } catch (error) {
-    console.error(error);
+    console.error("Login error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-// SuperAdmin-specific login
+// SuperAdmin login function
 authController.superAdminLogin = async (req, res) => {
   const { email, password } = req.body;
+
   try {
-    const user = await db.query("SELECT * FROM users WHERE email = $1", [
+    // Check if user exists
+    const userResult = await db.query("SELECT * FROM users WHERE email = $1", [
       email,
     ]);
-    if (user.rows.length === 0)
-      return res.status(404).json({ message: "User not found" });
 
-    // Check if the user has the "SuperAdmin" role
-    if (user.rows[0].role !== "SuperAdmin") {
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const user = userResult.rows[0];
+
+    // Get user role
+    const roleResult = await db.query(
+      "SELECT r.name AS role FROM roles r INNER JOIN user_roles ur ON ur.role_id = r.id WHERE ur.user_id = $1",
+      [user.id]
+    );
+    const role = roleResult.rows[0]?.role;
+
+    if (role !== "SuperAdmin") {
       return res
         .status(403)
         .json({ message: "Access denied: Not a SuperAdmin" });
     }
 
-    const validPassword = await bcrypt.compare(password, user.rows[0].password);
-    if (!validPassword)
+    // Validate password
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) {
       return res.status(401).json({ message: "Invalid password" });
+    }
 
-    const token = authController.generateToken(user.rows[0]);
+    // Generate token
+    const token = authController.generateToken({
+      id: user.id,
+      role: "SuperAdmin",
+    });
+
     res.status(200).json({ token });
   } catch (error) {
-    console.error(error);
+    console.error("SuperAdmin login error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -68,7 +103,6 @@ authController.superAdminLogin = async (req, res) => {
 authController.register = async (req, res) => {
   const { companyName, name, email, password } = req.body;
 
-  // Fields Validation
   if (!password || !email || !name || !companyName) {
     return res.status(400).json({ message: "All fields are required" });
   }
@@ -92,33 +126,45 @@ authController.register = async (req, res) => {
       return res.status(400).json({ message: "Company name already in use" });
     }
 
-    //Confirm whether the password field is being passed correctly from the frontend or curl request.
-    console.log("Password received:", password);
-
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Insert new company into the database
     const newCompany = await db.query(
       "INSERT INTO companies (name, subscription_plan, created_at, updated_at) VALUES ($1, $2, NOW(), NOW()) RETURNING id",
-      [companyName, "Free"] // Setting default subscription to "Free"
+      [companyName, "Free"]
     );
     const companyId = newCompany.rows[0].id;
 
     // Insert new user into the database as Company Admin
     const newUser = await db.query(
-      "INSERT INTO users (name, email, password, company_id, created_at, updated_at) VALUES ($1, $2, $3, $4, NOW(), NOW()) RETURNING *",
+      "INSERT INTO users (name, email, password, company_id, created_at, updated_at) VALUES ($1, $2, $3, $4, NOW(), NOW()) RETURNING id",
       [name, email, hashedPassword, companyId]
     );
+    const userId = newUser.rows[0].id;
 
     // Update the company's admin ID with the new user's ID
     await db.query("UPDATE companies SET company_admin_id = $1 WHERE id = $2", [
-      newUser.rows[0].id,
+      userId,
       companyId,
     ]);
 
-    // Generate JWT token for the new user
-    const token = authController.generateToken(newUser.rows[0]);
+    // Assign the "Admin" role to the new user
+    const roleResult = await db.query("SELECT id FROM roles WHERE name = $1", [
+      "admin",
+    ]);
+    if (roleResult.rows.length === 0) {
+      throw new Error("Admin role not found in the roles table");
+    }
+    const adminRoleId = roleResult.rows[0].id;
+
+    await db.query(
+      "INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)",
+      [userId, adminRoleId]
+    );
+
+    // Generate JWT token
+    const token = authController.generateToken({ id: userId, role: "Admin" });
 
     res.status(201).json({
       token,
