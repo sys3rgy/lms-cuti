@@ -31,3 +31,7 @@ app.use('/api', userRoutes);
 
 // Export app module for server or testing
 module.exports = app;
+
+// Use the policies route
+const policiesRoutes = require("./routes/policiesRoutes");
+app.use("/api/policies", policiesRoutes);

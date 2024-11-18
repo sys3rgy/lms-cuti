@@ -100,8 +100,8 @@ authController.register = async (req, res) => {
 
     // Insert new company into the database
     const newCompany = await db.query(
-      "INSERT INTO companies (name, created_at, updated_at) VALUES ($1, NOW(), NOW()) RETURNING id",
-      [companyName] // Use default value of subscription_plan in the database (which is 'Free')
+      "INSERT INTO companies (name, subscription_plan, created_at, updated_at) VALUES ($1, $2, NOW(), NOW()) RETURNING id",
+      [companyName, "Free"] // Setting default subscription to "Free"
     );
     const companyId = newCompany.rows[0].id;
 
