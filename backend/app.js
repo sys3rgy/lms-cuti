@@ -19,12 +19,14 @@ const authRoutes = require("./routes/authRoutes"); // Authentication routes
 const superAdminRoutes = require("./routes/superAdminRoutes"); // SuperAdmin routes
 const userRoutes = require("./routes/userRoutes"); // User data routes
 const policiesRoutes = require("./routes/policiesRoutes"); // Policies routes
+const departmentRoutes = require("./routes/departmentRoutes"); // Department routes
 
 // Mount routes under `/api`
 app.use("/api/auth", authRoutes); // Authentication routes
 app.use("/api/superadmin", superAdminRoutes); // SuperAdmin-specific routes
 app.use("/api/users", userRoutes); // User management routes
 app.use("/api/policies", policiesRoutes); // Policies-related routes
+app.use("/api/departments", departmentRoutes); // Department-related routes
 
 // Catch-all for unknown routes
 app.use((req, res, next) => {

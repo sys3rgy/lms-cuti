@@ -1,4 +1,5 @@
 const jwt = require("jsonwebtoken");
+const db = require("../config/database"); // Ensure the path to the database config is correct
 require("dotenv").config();
 
 const authMiddleware = {};
@@ -18,8 +19,8 @@ const verifyJwtToken = (token) => {
   }
 };
 
-// Verify token and extract user info
-authMiddleware.verifyToken = (req, res, next) => {
+// Verify token, extract user info, and fetch company_id
+authMiddleware.verifyToken = async (req, res, next) => {
   const authHeader = req.headers["authorization"];
   if (!authHeader) {
     return res.status(403).json({ message: "No token provided" });
@@ -33,12 +34,25 @@ authMiddleware.verifyToken = (req, res, next) => {
   }
 
   try {
+    // Decode the token
     const decoded = verifyJwtToken(token);
     req.userId = decoded.id;
     req.userRole = decoded.role;
+
+    // Fetch the user's company_id from the database
+    const userResult = await db.query(
+      "SELECT company_id FROM users WHERE id = $1",
+      [req.userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    req.companyId = userResult.rows[0].company_id;
     next();
   } catch (error) {
-    console.error("Token verification error:", error.message);
+    console.error("Token or company fetch error:", error.message);
     res.status(401).json({ message: error.message });
   }
 };
