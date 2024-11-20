@@ -29,15 +29,27 @@ departmentController.createDepartment = async (req, res) => {
       ]
     );
 
+    const department = result.rows[0];
+
+    // Automatically add the department manager as a primary approver
+    if (manager_id) {
+      await db.query(
+        `INSERT INTO approvers (approver_id, is_backup, target_type, target_id, created_at, updated_at) 
+         VALUES ($1, $2, $3, $4, NOW(), NOW())`,
+        [manager_id, false, "department", department.id]
+      );
+    }
+
     res.status(201).json({
       message: "Department created successfully",
-      department: result.rows[0],
+      department,
     });
   } catch (error) {
     console.error("Error creating department:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 // Fetch all departments for the company
 departmentController.getDepartments = async (req, res) => {
@@ -116,9 +128,16 @@ departmentController.deleteDepartment = async (req, res) => {
   const { id } = req.params;
 
   try {
+    // Delete all approvers linked to this department
+    await db.query(
+      "DELETE FROM approvers WHERE target_type = 'department' AND target_id = $1",
+      [id]
+    );
+
+    // Delete the department itself
     const result = await db.query(
       `DELETE FROM departments WHERE id = $1 AND company_id = $2 RETURNING *`,
-      [id, req.companyId] // Fix: Use `req.companyId`
+      [id, req.companyId] // Use `req.companyId`
     );
 
     if (result.rows.length === 0) {
@@ -127,11 +146,12 @@ departmentController.deleteDepartment = async (req, res) => {
         .json({ message: "Department not found or not authorized" });
     }
 
-    res.status(200).json({ message: "Department deleted successfully" });
+    res.status(200).json({ message: "Department and associated approvers deleted successfully" });
   } catch (error) {
     console.error("Error deleting department:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 module.exports = departmentController;
